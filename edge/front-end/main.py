@@ -1,3 +1,11 @@
+"""
+TODO
+- Add pose figure to top right box
+- Display the PoseModel frames from nvidia-inference onto the left hand box
+- Lyrics (should be some sort of yellow color kind of like kareoke on yt)
+"""
+
+
 import pygame
 pygame.init()
 #---------------------------------------------
@@ -77,4 +85,3 @@ while run:
   pygame.display.flip()
 
 # exit pygame
-pygame.quit()
