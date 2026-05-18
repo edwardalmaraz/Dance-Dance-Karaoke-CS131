@@ -1,1 +1,6 @@
 pygame
+json
+os
+sounddevice
+pyaudio
+scipy
