@@ -3,6 +3,8 @@ TODO
 - Add pose figure to top right box
 - Display the PoseModel frames from nvidia-inference onto the left hand box
 - Lyrics (should be some sort of yellow color kind of like kareoke on yt)
+- add leaderboard menu
+- 
 """
 
 
@@ -16,7 +18,7 @@ pygame.display.set_caption("Kareoke + Dance")
 #---------------------------------------------
 #                  INIT SONG
 SONG_DIR = "songs"
-pygame.mixer.music.load(f"{SONG_DIR}/cupid.mp3")
+pygame.mixer.music.load(f"{SONG_DIR}/TWICE The Feels MV.mp3")
 pygame.mixer.music.play()
 
 
@@ -65,7 +67,7 @@ left_camera_rect = pygame.Rect(
 button_font = pygame.font.SysFont(None, 24)
 button_rect = pygame.Rect(window_width - MARGIN - 100, MARGIN, 100, 40)
 button_text = button_font.render("PAUSE", True, BLACK)
-is_paused = False
+is_paused = True
 
 #---------------------------------------------
 #                   RUN

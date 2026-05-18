@@ -1,6 +1,6 @@
 pygame
-json
-os
+#json
+#os
 sounddevice
 pyaudio
 scipy
