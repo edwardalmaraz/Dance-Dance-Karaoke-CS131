@@ -21,10 +21,20 @@ def get_song_lyrics(song_id: str):
     raw = blob.download_as_text()
     return normalize(raw)
 
-# fetch reference audio bytes for pitch comparison
-def get_song_audio(song_id: str) -> bytes:
-    blob = song_bucket.blob(f"{song_id}.mp3")
-    return blob.download_as_bytes()
+#grabs raw lyrics for display on edge device
+def get_song_lyrics_raw(song_id: str) -> str:
+    blob = song_bucket.blob(f"{song_id}.txt")
+    return blob.download_as_text()
+
+
+def list_songs() -> list:
+    blobs = song_bucket.list_blobs()
+    names = {blob.name for blob in blobs}
+    song_ids = set()
+    for name in names:
+        if name.endswith(".txt"):
+            song_id = name[:-4]
+    return sorted(song_ids)
 
 
 #function to save score to buckets 
