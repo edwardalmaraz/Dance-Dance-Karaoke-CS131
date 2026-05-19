@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from database import *
 from pydantic import BaseModel
 from scoring.text import score_lyrics
@@ -42,11 +42,22 @@ async def compute_score(request: lyric_score_request):
     save_score(request.player_id, result, request.song_id)
     return lyric_score_response(player_id=request.player_id, lyric_score=result)
 
-#extracting song pitch, comparing for additional score
 
-
-#testing api, grabbing song lyrics 
+#testing api, grabbing song lyrics
 @app.get("/songs/{song_id}")
 async def get_song(song_id: str):
     lyrics = get_song_lyrics(song_id)
     return {"song_id": song_id, "lyrics": lyrics}
+
+#ping function for edge device to check if the server is online
+@app.get("/ping")
+async def ping():
+    return {"status": "online"}
+
+#WIP: receives an audio file uploaded from the Jetson and checks that it's a .wav file.
+#will be used to grab wav file from jetson for scoring 
+@app.post("/upload/audio")
+async def upload_audio(file: UploadFile = File(...)):
+    if not file.filename.endswith(".wav"):
+        raise HTTPException(status_code=400, detail="Only .wav files are accepted")
+    return {"filename": file.filename, "status": "received"}
