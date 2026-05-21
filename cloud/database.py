@@ -2,42 +2,92 @@ from google.cloud import storage
 import re
 import json
 import time
+from typing import Optional
 
 client = storage.Client()
 song_bucket = client.bucket("cs131_song_bucket")
 leaderboard_bucket = client.bucket("cs131_leaderboard_bucket")
 
-#functions for everything lyric based:
-#normalizes song lyrics from database
+
 def normalize(text: str):
     text = text.lower()
     text = re.sub(r"[^\w\s]", "", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
-#grabs song lyrics from DB, used for calculating final score
-def get_song_lyrics(song_id: str):
-    blob = song_bucket.blob(f"{song_id}.txt")
+
+def get_song_lyrics(song_id: str) -> str:
+    blob = song_bucket.blob(f"{song_id}/lyrics.txt")
     raw = blob.download_as_text()
     return normalize(raw)
 
-#grabs raw lyrics for display on edge device
+
 def get_song_lyrics_raw(song_id: str) -> str:
-    blob = song_bucket.blob(f"{song_id}.txt")
+    blob = song_bucket.blob(f"{song_id}/lyrics.txt")
     return blob.download_as_text()
+
+
+def get_song_metadata(song_id: str) -> dict:
+    blob = song_bucket.blob(f"{song_id}/metadata.json")
+    raw = blob.download_as_text()
+    return json.loads(raw)
+
+
+def get_song_mp3(song_id: str) -> bytes:
+    blob = song_bucket.blob(f"{song_id}/audio.mp3")
+    return blob.download_as_bytes()
+
+
+def upload_song(
+    song_id: str,
+    title: str,
+    artist: str,
+    mp3_bytes: bytes,
+    lyrics: Optional[str] = None,
+    album: Optional[str] = None,
+    year: Optional[int] = None,
+    genre: Optional[str] = None,
+    bpm: Optional[int] = None,
+) -> dict:
+    metadata = {
+        "song_id": song_id,
+        "title": title,
+        "artist": artist,
+        "album": album,
+        "year": year,
+        "genre": genre,
+        "bpm": bpm,
+        "uploaded_at": int(time.time()),
+    }
+
+    song_bucket.blob(f"{song_id}/audio.mp3").upload_from_string(
+        mp3_bytes, content_type="audio/mpeg"
+    )
+    song_bucket.blob(f"{song_id}/metadata.json").upload_from_string(
+        json.dumps(metadata), content_type="application/json"
+    )
+    if lyrics:
+        song_bucket.blob(f"{song_id}/lyrics.txt").upload_from_string(
+            lyrics, content_type="text/plain"
+        )
+
+    return metadata
 
 
 def list_songs() -> list:
     blobs = song_bucket.list_blobs()
-    names = {blob.name for blob in blobs}
-    song_ids = set()
-    for name in names:
-        if name.endswith(".txt"):
-            song_id = name[:-4]
-    return sorted(song_ids)
+    songs = []
+    for blob in blobs:
+        if blob.name.endswith("/metadata.json"):
+            metadata = json.loads(blob.download_as_text())
+            songs.append({
+                "song_id": metadata["song_id"],
+                "title": metadata["title"],
+                "artist": metadata["artist"],
+            })
+    return sorted(songs, key=lambda s: s["title"])
 
 
-#function to save score to buckets 
 def save_score(player_id: str, score: str, song_id: str):
     entry = {
         "player_id": player_id,
