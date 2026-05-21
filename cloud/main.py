@@ -1,12 +1,13 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import StreamingResponse
 from database import *
 from pydantic import BaseModel
 from scoring.text import score_lyrics
+from typing import Optional
+import io
+import base64
 
 app = FastAPI()
-
-#items uses for when the jetson asks to compute the lyrics score 
-#when 
 class lyric_score_request(BaseModel):
     song_id: str
     player_id: str
@@ -21,43 +22,119 @@ class pitch_score_response(BaseModel):
     pitch_score: float
 
 
-#when first starting the fastAPI server, root starts with an HTML page of hello world
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
 
 
-# @app.get("/items/{item_id}")
-# def read_item(item_id: int, q: str | None = None):
-#     return {"item_id": item_id, "q": q}
+@app.get("/ping", summary="Health check endpoint", tags=["Utility"])
+async def ping():
+    return {"status": "online"}
 
-#When the jetson sends the final transcript at the end of the game, calculate score 
-@app.post("/score/lyrics", response_model=lyric_score_response)
+
+# --- Song upload (manual admin use) ---
+
+@app.post("/songs/upload", summary="Uploads a song", tags=["Songs"])
+async def upload_song_endpoint(
+    song_id: str = Form(...),
+    title: str = Form(...),
+    artist: str = Form(...),
+    album: Optional[str] = Form(None),
+    year: Optional[int] = Form(None),
+    genre: Optional[str] = Form(None),
+    bpm: Optional[int] = Form(None),
+    mp3_file: UploadFile = File(...),
+    lyrics_file: UploadFile = File(...),
+):
+    if not mp3_file.filename.endswith(".mp3"):
+        raise HTTPException(status_code=400, detail="mp3_file must be a .mp3")
+
+    mp3_bytes = await mp3_file.read()
+    lyrics_text = None
+    if lyrics_file is not None:
+        lyrics_bytes = await lyrics_file.read()
+        lyrics_text = lyrics_bytes.decode("utf-8")
+
+    metadata = upload_song(
+        song_id=song_id,
+        title=title,
+        artist=artist,
+        mp3_bytes=mp3_bytes,
+        lyrics=lyrics_text,
+        album=album,
+        year=year,
+        genre=genre,
+        bpm=bpm,
+    )
+    return {"status": "uploaded", "song": metadata}
+
+
+# --- Song retrieval (used by Jetson / frontend) ---
+@app.get("/songs",  summary="List all songs via song title", tags=["Songs"])
+async def get_songs():
+    return {"songs": list_songs()}
+
+
+@app.get("/songs/{song_id}/meta_data", summary="Get Song Metadata", tags=["Songs"])
+async def get_song(song_id: str):
+    try:
+        metadata = get_song_metadata(song_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail=f"Song '{song_id}' not found")
+    try:
+        metadata["lyrics"] = get_song_lyrics_raw(song_id)
+    except Exception:
+        metadata["lyrics"] = None
+    return metadata
+
+
+@app.get("/songs/{song_id}/mp3", summary="Stream Song MP3", tags=["Songs"])
+async def stream_song_mp3(song_id: str):
+    try:
+        mp3_bytes = get_song_mp3(song_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail=f"MP3 for '{song_id}' not found")
+    return StreamingResponse(
+        io.BytesIO(mp3_bytes),
+        media_type="audio/mpeg",
+        headers={"Content-Disposition": f"attachment; filename={song_id}.mp3"},
+    )
+
+
+# --- Scoring ---
+@app.post("/score/lyrics", response_model=lyric_score_response, summary="Score player's lyrics against the original song lyrics", tags=["Scoring"])
 async def compute_score(request: lyric_score_request):
-    #grab lyrics from song DB
     lyrics = get_song_lyrics(request.song_id)
-    #compute score using lyric text function
     result = score_lyrics(request.player_transcript, lyrics)
-    #save score to leaderboard DB 
     save_score(request.player_id, result, request.song_id)
     return lyric_score_response(player_id=request.player_id, lyric_score=result)
 
 
-#testing api, grabbing song lyrics
-@app.get("/songs/{song_id}")
-async def get_song(song_id: str):
+# --- Server recieving Jetson packet (WAV + transcript) ---
+@app.post("/score/submit", summary="Receive WAV + transcript from Jetson and score lyrics", tags=["Scoring"])
+async def submit_round(
+    song_id: str = Form(...),
+    player_id: str = Form(...),
+    player_transcript: str = Form(...),
+    wav_file: UploadFile = File(...),
+):
+    if not wav_file.filename.endswith(".wav"):
+        raise HTTPException(status_code=400, detail="wav_file must be a .wav")
+
+    wav_bytes = await wav_file.read()
+
+    # score lyrics
     lyrics = get_song_lyrics(song_id)
-    return {"song_id": song_id, "lyrics": lyrics}
+    lyric_score = score_lyrics(player_transcript, lyrics)
+    save_score(player_id, lyric_score, song_id)
 
-#ping function for edge device to check if the server is online
-@app.get("/ping")
-async def ping():
-    return {"status": "online"}
+    #TODO: pitch scoring — edward 
+    pitch_score = None
 
-#WIP: receives an audio file uploaded from the Jetson and checks that it's a .wav file.
-#will be used to grab wav file from jetson for scoring 
-@app.post("/upload/audio")
-async def upload_audio(file: UploadFile = File(...)):
-    if not file.filename.endswith(".wav"):
-        raise HTTPException(status_code=400, detail="Only .wav files are accepted")
-    return {"filename": file.filename, "status": "received"}
+    return {
+        "player_id": player_id,
+        "song_id": song_id,
+        "lyric_score": lyric_score,
+        "pitch_score": pitch_score,
+        "wav_received": len(wav_bytes),
+    }
