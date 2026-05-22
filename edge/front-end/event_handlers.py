@@ -1,5 +1,6 @@
 import os
 import pygame
+from record import start_recording, stop_recording
 
 # snapshot pose data to a file every 5 seconds
 # imported from posenet example code
@@ -55,6 +56,7 @@ def handle_events(state):
                         state["button_text"] = state["button_font"].render("PAUSE", True, state["BLACK"])
                         if state["music_loaded"]:
                             pygame.mixer.music.play()
+                        start_recording()
 
                     elif state["game_state"] == "playing":
                         state["pause_start_time"] = pygame.time.get_ticks()
@@ -62,6 +64,7 @@ def handle_events(state):
                         state["button_text"] = state["button_font"].render("PLAY", True, state["BLACK"])
                         if state["music_loaded"]:
                             pygame.mixer.music.pause()
+                        stop_recording()
 
                     elif state["game_state"] == "paused":
                         paused_duration = pygame.time.get_ticks() - state.get("pause_start_time", 0)
@@ -94,6 +97,7 @@ def handle_events(state):
                         state["button_text"] = state["button_font"].render("START", True, state["BLACK"])
                         if state["music_loaded"]:
                             pygame.mixer.music.stop()
+                        stop_recording()
                         state["current_display"] = "start_screen"
 
             elif state["current_display"] == "leaderboard":
@@ -137,6 +141,7 @@ def update_state(state):
         state["button_text"] = state["button_font"].render("START", True, state["BLACK"])
         if state["music_loaded"]:
             pygame.mixer.music.stop()
+        stop_recording()
 
     if state["pose_camera"].available and not state["pose_camera"].is_streaming():
         state["run"] = False

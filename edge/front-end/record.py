@@ -1,16 +1,21 @@
+import os
 import sounddevice as sd
 import scipy.io.wavfile as wav
 import numpy as np
 
-sr = 44100 # frames per second
-seconds = 5
+sr = 44100
+OUTPUT_FILE = "voice_recording/output.wav"
+_audio = None
 
-def record(filename="user-audio/output.wav"):
-    audio = sd.rec(int(seconds * sr), samplerate=sr, channels=1, dtype=np.int16)
-    print(f"Started Recording")
-    sd.wait()
-    wav.write(filename, sr, audio)
-    print(f"Saved to {filename}")
+def start_recording(max_seconds=300):
+    global _audio
+    os.makedirs("voice_recording", exist_ok=True)
+    _audio = sd.rec(int(max_seconds * sr), samplerate=sr, channels=1, dtype=np.int16)
 
-if __name__ == "__main__":
-    record()
+def stop_recording():
+    global _audio
+    sd.stop()
+    if _audio is not None:
+        wav.write(OUTPUT_FILE, sr, _audio)
+        _audio = None
+        print(f"Saved to {OUTPUT_FILE}")
