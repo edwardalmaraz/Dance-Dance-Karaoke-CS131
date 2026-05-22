@@ -1,5 +1,28 @@
 import pygame
 
+# render a surface to fit within a target rectangle while maintaining aspect ratio
+# if the surface is smaller than the target rectangle, it will be centered without scaling
+# this renders the camera feed to the left rectangle and the pose images to the right rectangle
+def blit_fit(surface, target_surface, target_rect):
+    source_rect = surface.get_rect()
+    scale = min(target_rect.width / source_rect.width, target_rect.height / source_rect.height)
+    scaled_size = (
+        max(1, int(source_rect.width * scale)),
+        max(1, int(source_rect.height * scale)),
+    )
+    scaled = pygame.transform.smoothscale(surface, scaled_size)
+    scaled_rect = scaled.get_rect(center=target_rect.center)
+    target_surface.blit(scaled, scaled_rect)
+
+
+def draw_centered_status(surface, text, rect, font, color):
+    while font.size(text)[0] > rect.width - 20 and len(text) > 3:
+        text = text[:-4] + "..."
+
+    rendered = font.render(text, True, color)
+    text_rect = rendered.get_rect(center=rect.center)
+    surface.blit(rendered, text_rect)
+
 
 def render(state):
     window = state["window"]
@@ -22,6 +45,10 @@ def render(state):
         pygame.draw.rect(window, state["WHITE"], state["right_rect"], state["LINE_WIDTH"])
         pygame.draw.rect(window, state["WHITE"], state["bottom_rect"], state["LINE_WIDTH"])
 
+        window.blit(state["left_label"], (state["left_rect"].x + state["LABEL_PADDING"], state["left_rect"].y + state["LABEL_PADDING"]))
+        window.blit(state["right_label"], (state["right_rect"].x + state["LABEL_PADDING"], state["right_rect"].y + state["LABEL_PADDING"]))
+        window.blit(state["bottom_label"], (state["bottom_rect"].x + state["LABEL_PADDING"], state["bottom_rect"].y + state["LABEL_PADDING"]))
+
         text_surface1 = state["small_font"].render(state["The_Feels"].lyrics[state["current_lyrics_index"] - 1].text, True, state["WHITE"]) 
         text_surface2 = state["big_font"].render(state["The_Feels"].lyrics[state["current_lyrics_index"]].text, True, state["YELLOW"]) 
 
@@ -36,7 +63,16 @@ def render(state):
             text_rect3 = text_surface3.get_rect(center=(state["bottom_rect"].centerx, state["bottom_rect"].bottom - 80))
             window.blit(text_surface3, text_rect3)
 
-        # left box reserved for pose model or other content (camera removed)
+        pose_surface = state.get("pose_surface")
+        poses = state.get("poses", [])
+        if pose_surface is not None:
+            blit_fit(pose_surface, window, state["left_camera_rect"])
+            pose_count = state["status_font"].render(f"poses: {len(poses)}", True, state["WHITE"])
+            window.blit(pose_count, (state["left_camera_rect"].x, state["left_camera_rect"].bottom - pose_count.get_height()))
+        elif state["pose_camera"].error:
+            draw_centered_status(window, state["pose_camera"].error, state["left_camera_rect"], state["status_font"], state["WHITE"])
+        else:
+            draw_centered_status(window, "Waiting for pose camera...", state["left_camera_rect"], state["status_font"], state["WHITE"])
 
         window.blit(state["pose_images"][state["current_pose_index"]], state["right_rect"])
 
