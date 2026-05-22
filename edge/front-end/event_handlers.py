@@ -1,8 +1,10 @@
+import os
 import pygame
 
 # snapshot pose data to a file every 5 seconds
 # imported from posenet example code
 POSE_OUTPUT_FILE = "/player_poses/pose_locations.txt"
+os.makedirs(os.path.dirname(POSE_OUTPUT_FILE), exist_ok=True)
 POSE_SNAPSHOT_INTERVAL_MS = 5000
 
 
@@ -51,17 +53,23 @@ def handle_events(state):
                         state["pose_last_snapshot_song_time_ms"] = 0
                         state["game_state"] = "playing"
                         state["button_text"] = state["button_font"].render("PAUSE", True, state["BLACK"])
+                        if state["music_loaded"]:
+                            pygame.mixer.music.play()
 
                     elif state["game_state"] == "playing":
                         state["pause_start_time"] = pygame.time.get_ticks()
                         state["game_state"] = "paused"
                         state["button_text"] = state["button_font"].render("PLAY", True, state["BLACK"])
+                        if state["music_loaded"]:
+                            pygame.mixer.music.pause()
 
                     elif state["game_state"] == "paused":
                         paused_duration = pygame.time.get_ticks() - state.get("pause_start_time", 0)
                         state["song_start_time"] += paused_duration
                         state["game_state"] = "playing"
                         state["button_text"] = state["button_font"].render("PAUSE", True, state["BLACK"])
+                        if state["music_loaded"]:
+                            pygame.mixer.music.unpause()
 
             elif state["current_display"] == "leaderboard":
                 pass
@@ -83,7 +91,9 @@ def handle_events(state):
                         state["game_state"] = "not_started"
                         state["current_lyrics_index"] = 1
                         state["current_pose_index"] = 0
-                        state["button_text"] = state["button_font"].render("START", True, state["BLACK"]) 
+                        state["button_text"] = state["button_font"].render("START", True, state["BLACK"])
+                        if state["music_loaded"]:
+                            pygame.mixer.music.stop()
                         state["current_display"] = "start_screen"
 
             elif state["current_display"] == "leaderboard":
@@ -100,12 +110,12 @@ def update_state(state):
     if state.get("game_state") == "playing":
         current_song_time = pygame.time.get_ticks() - state.get("song_start_time", 0)
 
-        if state["current_lyrics_index"] + 1 < len(state["The_Feels"].lyrics):
-            if current_song_time >= state["The_Feels"].lyrics[state["current_lyrics_index"] + 1].timestamp_ms:
+        if state["current_lyrics_index"] + 1 < len(state["LOADED_SONG"].lyrics):
+            if current_song_time >= state["LOADED_SONG"].lyrics[state["current_lyrics_index"] + 1].timestamp_ms:
                 state["current_lyrics_index"] += 1
 
-        if state["current_pose_index"] + 1 < len(state["The_Feels"].poses):
-            if current_song_time >= state["The_Feels"].poses[state["current_pose_index"] + 1].timestamp_ms:
+        if state["current_pose_index"] + 1 < len(state["LOADED_SONG"].poses):
+            if current_song_time >= state["LOADED_SONG"].poses[state["current_pose_index"] + 1].timestamp_ms:
                 state["current_pose_index"] += 1
 
         last = state.get("pose_last_snapshot_song_time_ms", 0)
@@ -124,7 +134,9 @@ def update_state(state):
         state["current_lyrics_index"] = 1
         state["current_pose_index"] = 0
         state["current_display"] = "end_screen"
-        state["button_text"] = state["button_font"].render("START", True, state["BLACK"]) 
+        state["button_text"] = state["button_font"].render("START", True, state["BLACK"])
+        if state["music_loaded"]:
+            pygame.mixer.music.stop()
 
     if state["pose_camera"].available and not state["pose_camera"].is_streaming():
         state["run"] = False

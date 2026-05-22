@@ -49,8 +49,8 @@ def render(state):
         window.blit(state["right_label"], (state["right_rect"].x + state["LABEL_PADDING"], state["right_rect"].y + state["LABEL_PADDING"]))
         window.blit(state["bottom_label"], (state["bottom_rect"].x + state["LABEL_PADDING"], state["bottom_rect"].y + state["LABEL_PADDING"]))
 
-        text_surface1 = state["small_font"].render(state["The_Feels"].lyrics[state["current_lyrics_index"] - 1].text, True, state["WHITE"]) 
-        text_surface2 = state["big_font"].render(state["The_Feels"].lyrics[state["current_lyrics_index"]].text, True, state["YELLOW"]) 
+        text_surface1 = state["small_font"].render(state["LOADED_SONG"].lyrics[state["current_lyrics_index"] - 1].text, True, state["WHITE"]) 
+        text_surface2 = state["big_font"].render(state["LOADED_SONG"].lyrics[state["current_lyrics_index"]].text, True, state["YELLOW"]) 
 
         text_rect1 = text_surface1.get_rect(center=(state["bottom_rect"].centerx, state["bottom_rect"].top + 80))
         text_rect2 = text_surface2.get_rect(center=state["bottom_rect"].center)
@@ -58,8 +58,8 @@ def render(state):
         window.blit(text_surface1, text_rect1)
         window.blit(text_surface2, text_rect2)
 
-        if state["current_lyrics_index"] + 1 < len(state["The_Feels"].lyrics):
-            text_surface3 = state["small_font"].render(state["The_Feels"].lyrics[state["current_lyrics_index"] + 1].text, True, state["WHITE"]) 
+        if state["current_lyrics_index"] + 1 < len(state["LOADED_SONG"].lyrics):
+            text_surface3 = state["small_font"].render(state["LOADED_SONG"].lyrics[state["current_lyrics_index"] + 1].text, True, state["WHITE"]) 
             text_rect3 = text_surface3.get_rect(center=(state["bottom_rect"].centerx, state["bottom_rect"].bottom - 80))
             window.blit(text_surface3, text_rect3)
 
