@@ -10,7 +10,7 @@ def parse_pose_sequence_data(filename: str) -> tuple[list[str], dict]:
 
     #extracts the sequence order of poses from the json file, this is just 
     #a string of pose names in the order they should be performed in the song
-    sequence_order = data["sequence_order"].split(", ")
+    sequence_order = data["sequence_order"]
 
     #extracts the poses from the json file, this is a list of dicts with each dict containing 
     #a pose name and the keypoints for that pose
