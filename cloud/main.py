@@ -6,8 +6,20 @@ from scoring.text import score_lyrics
 from typing import Optional
 import io
 import base64
+import json
 
 app = FastAPI()
+class song_metadata_update(BaseModel):
+    title: Optional[str] = None
+    artist: Optional[str] = None
+    album: Optional[str] = None
+    year: Optional[int] = None
+    genre: Optional[str] = None
+    bpm: Optional[int] = None
+    sequence_order: Optional[str] = None
+    poses: Optional[list] = None
+
+
 class lyric_score_request(BaseModel):
     song_id: str
     player_id: str
@@ -39,6 +51,8 @@ async def upload_song_endpoint(
     song_id: str = Form(...),
     title: str = Form(...),
     artist: str = Form(...),
+    sequence_order: str = Form(...),
+    poses: str = Form(...),
     album: Optional[str] = Form(None),
     year: Optional[int] = Form(None),
     genre: Optional[str] = Form(None),
@@ -48,6 +62,11 @@ async def upload_song_endpoint(
 ):
     if not mp3_file.filename.endswith(".mp3"):
         raise HTTPException(status_code=400, detail="mp3_file must be a .mp3")
+
+    try:
+        poses_list = json.loads(poses)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="poses must be a valid JSON array")
 
     mp3_bytes = await mp3_file.read()
     lyrics_text = None
@@ -60,6 +79,8 @@ async def upload_song_endpoint(
         title=title,
         artist=artist,
         mp3_bytes=mp3_bytes,
+        sequence_order=sequence_order,
+        poses=poses_list,
         lyrics=lyrics_text,
         album=album,
         year=year,
@@ -101,6 +122,15 @@ async def stream_song_mp3(song_id: str):
     )
 
 
+@app.patch("/songs/{song_id}/metadata", summary="Update song metadata fields", tags=["Songs"])
+async def patch_song_metadata(song_id: str, updates: song_metadata_update):
+    try:
+        metadata = update_song_metadata(song_id, updates.model_dump(exclude_none=True))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Song '{song_id}' not found")
+    return {"status": "updated", "song": metadata}
+
+
 # --- Scoring ---
 @app.post("/score/lyrics", response_model=lyric_score_response, summary="Score player's lyrics against the original song lyrics", tags=["Scoring"])
 async def compute_score(request: lyric_score_request):
@@ -140,11 +170,6 @@ async def submit_round(
     update_song_leaderboard(song_id, player_id, final_score)
 
     return {
-        "player_id": player_id,
-        "song_id": song_id,
-        "lyric_score": lyric_score,
-        "pitch_score": pitch_score,
-        "move_score": move_score,
         "final_score": final_score,
     }
 

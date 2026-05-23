@@ -43,6 +43,8 @@ def upload_song(
     title: str,
     artist: str,
     mp3_bytes: bytes,
+    sequence_order: str,
+    poses: list,
     lyrics: Optional[str] = None,
     album: Optional[str] = None,
     year: Optional[int] = None,
@@ -58,6 +60,8 @@ def upload_song(
         "genre": genre,
         "bpm": bpm,
         "uploaded_at": int(time.time()),
+        "sequence_order": sequence_order,
+        "poses": poses,
     }
 
     song_bucket.blob(f"{song_id}/audio.mp3").upload_from_string(
@@ -98,6 +102,16 @@ def save_score(player_id: str, score: float, song_id: str):
     blob_name = f"{song_id}/{player_id}_{entry['timestamp']}.json"
     blob = leaderboard_bucket.blob(blob_name)
     blob.upload_from_string(json.dumps(entry), content_type="application/json")
+
+
+def update_song_metadata(song_id: str, updates: dict) -> dict:
+    blob = song_bucket.blob(f"{song_id}/metadata.json")
+    if not blob.exists():
+        raise FileNotFoundError(f"Song '{song_id}' not found")
+    metadata = json.loads(blob.download_as_text())
+    metadata.update({k: v for k, v in updates.items() if v is not None})
+    blob.upload_from_string(json.dumps(metadata, indent=2), content_type="application/json")
+    return metadata
 
 
 def get_song_leaderboard(song_id: str) -> list:
