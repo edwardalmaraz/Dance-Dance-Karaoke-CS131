@@ -1,0 +1,3 @@
+[submodule "posenet"]
+	path = posenet
+	url = https://github.com/ZWang0987/pose-model-cs131.git
