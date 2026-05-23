@@ -15,7 +15,7 @@ os.makedirs(os.path.dirname(POSE_COMPARISON_FILE), exist_ok=True)
 POSE_SNAPSHOT_INTERVAL_MS = 5000
 
 
-
+#from posenet (modified to extract pose locations)
 def _write_pose_snapshot(state, current_song_time_ms):
     poses = state.get("poses", [])
     camera = state.get("pose_camera")

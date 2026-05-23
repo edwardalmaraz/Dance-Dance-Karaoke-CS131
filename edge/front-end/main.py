@@ -208,6 +208,7 @@ leaderboard_hint_text = leaderboard_hint_font.render("Press ESC to return to men
 # pose reference images
 pose_images = []
 # there is a data classs for Pose in models.py, but we don't need to use it here since we just need the images
+# start here tmrw and assume this is where Z will inject the new pose drawing functions
 for pose_move in LOADED_SONG.poses:
     image = pygame.image.load(pose_move.image_path)
     image = pygame.transform.scale(image, (right_rect.width, right_rect.height))
