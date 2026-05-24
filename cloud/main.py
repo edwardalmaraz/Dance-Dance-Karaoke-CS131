@@ -51,8 +51,8 @@ async def upload_song_endpoint(
     song_id: str = Form(...),
     title: str = Form(...),
     artist: str = Form(...),
-    sequence_order: str = Form(...),
-    poses: str = Form(...),
+    sequence_order: Optional[str] = Form(None),
+    poses: Optional[str] = Form(None),  # JSON string of list of pose names
     album: Optional[str] = Form(None),
     year: Optional[int] = Form(None),
     genre: Optional[str] = Form(None),
