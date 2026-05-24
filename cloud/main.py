@@ -49,8 +49,8 @@ async def ping():
 @app.post("/songs/upload", summary="Uploads a song", tags=["Songs"])
 async def upload_song_endpoint(
     song_id: str = Form(...),
-    title: str = Form(...),
-    artist: str = Form(...),
+    song_title: str = Form(...),
+    artist_name: str = Form(...),
     sequence_order: Optional[str] = Form(None),
     poses: Optional[str] = Form(None),  # JSON string of list of pose names
     album: Optional[str] = Form(None),
