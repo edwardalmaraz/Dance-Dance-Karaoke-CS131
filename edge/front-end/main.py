@@ -54,7 +54,12 @@ class PoseNetCamera:
            return None, []
 
 
-       img = self.input.Capture()
+       try:
+           img = self.input.Capture()
+       except Exception:
+           self.available = False
+           return None, []
+
        if img is None:
            return None, []
 
@@ -132,7 +137,9 @@ SONG_DIR = "songs"
 music_loaded = True
 try:
    pygame.mixer.quit()  # undo auto-init from pygame.init() before re-initializing with custom device
-   pygame.mixer.init(devicename="EarPods, USB Audio")
+
+   os.environ.setdefault("SDL_AUDIODRIVER", "alsa")
+   pygame.mixer.init()
    pygame.mixer.music.load(f"{SONG_DIR}/audio.mp3")
 except pygame.error as e:
    music_loaded = False
@@ -170,7 +177,7 @@ top_height = (window_height - (2 * MARGIN) - GAP) // 2
 top_width = (window_width - (2 * MARGIN) - GAP) // 2
 
 
-# create window stamps
+# create window stampspose
 left_rect = pygame.Rect(MARGIN, MARGIN, top_width, top_height)
 right_rect = pygame.Rect(MARGIN + top_width + GAP, MARGIN, top_width, top_height)
 bottom_rect = pygame.Rect(
@@ -193,20 +200,18 @@ left_camera_rect = pygame.Rect(
 # create play/pause button (top right window -> top right corner)
 button_font = pygame.font.SysFont(None, 24)
 button_rect = pygame.Rect(window_width - MARGIN - 100, MARGIN, 100, 40)
-button_text = button_font.render("PAUSE", True, BLACK)
+button_text = button_font.render("PAUSE", True, WHITE)
 is_paused = False
 
 
 
-
-#---------------------------------------------
-#                   RUN
 
 
 # additional vars for full app (layout section already has the rest)
 YELLOW = (255, 255, 0)
 small_font = pygame.font.SysFont("comicsansms", 24)
 big_font = pygame.font.SysFont("comicsansms", 36)
+countdown_font = pygame.font.SysFont(None, 120)
 
 
 # song data
@@ -246,15 +251,9 @@ library_hint_font = pygame.font.SysFont(None, 28)
 leaderboard_title_font = pygame.font.SysFont(None, 64)
 leaderboard_entry_font = pygame.font.SysFont(None, 36)
 leaderboard_hint_font = pygame.font.SysFont(None, 28)
-leaderboard_entries = [
-   LeaderboardEntry(player_name="HANSON", score=980, rank=1),
-   LeaderboardEntry(player_name="Z", score=970, rank=2),
-   LeaderboardEntry(player_name="ANDY", score=960, rank=3),
-   LeaderboardEntry(player_name="EDWARD", score=950, rank=4),
-   LeaderboardEntry(player_name="BOB", score=67, rank=5),
-]
+leaderboard_entries = []  # populated when user selects a song from leaderboard_song_select
 leaderboard_title_text = leaderboard_title_font.render("LEADERBOARD", True, WHITE)
-leaderboard_hint_text = leaderboard_hint_font.render("Press ESC to return to menu", True, WHITE)
+leaderboard_hint_text = leaderboard_hint_font.render("ESC to go back", True, WHITE)
 
 
 # pose reference images
@@ -288,6 +287,7 @@ state = {
    "LABEL_PADDING": LABEL_PADDING,
    "small_font": small_font,
    "big_font": big_font,
+   "countdown_font": countdown_font,
    "label_font": label_font,
    "status_font": status_font,
    "left_label": left_label,
@@ -301,20 +301,24 @@ state = {
    "left_camera_rect": left_camera_rect,
    "button_font": button_font,
    "button_rect": button_rect,
-   "button_text": button_font.render("START", True, BLACK),
+   "button_text": button_font.render("START", True, WHITE),
    "game_state": "not_started",
    "title_text": title_text,
    "play_song_text": play_song_text,
    "online_library_text": online_library_text,
    "leaderboard_text": leaderboard_menu_text,
+   "end_title_font": end_title_font,
    "end_song_name_text": end_song_name_text,
    "end_score_font": end_score_font,
    "end_score_text": end_score_text,
    "end_hint_text": end_hint_text,
    "leaderboard_entries": leaderboard_entries,
    "leaderboard_title_text": leaderboard_title_text,
+   "leaderboard_title_font": leaderboard_title_font,
    "leaderboard_entry_font": leaderboard_entry_font,
    "leaderboard_hint_text": leaderboard_hint_text,
+   "leaderboard_songs": [],
+   "leaderboard_song_select_index": 0,
    "player_id": "player1",
    "player_name_input": "",
    "name_entry_title_font": name_entry_title_font,
@@ -360,6 +364,12 @@ if music_loaded:
    pygame.mixer.music.stop()
    pygame.mixer.quit()
 pygame.quit()
+
+# restore original song files if a library song was downloaded this session
+import shutil
+for fname in ["songs/metadata.json", "songs/audio.mp3"]:
+   if os.path.exists(fname + ".default"):
+       shutil.move(fname + ".default", fname)
 
 
 
