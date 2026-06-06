@@ -77,7 +77,7 @@ cs131_final_project/
 
 ### Clone the repos (with submodules)
 
-First, clone the `dance dance kareoke` repo 
+First, clone the `dance dance karaoke` repo 
 
 ```bash
 git clone --recurse-submodules https://github.com/edwardalmaraz/cs131_final_project.git
